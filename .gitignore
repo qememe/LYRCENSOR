@@ -1,0 +1,14 @@
+lyrcensor
+src/*.o
+tests/test_core
+tests/test_diagnostics
+tests/test_http
+tests/test_terminal
+tests/lyrcensor_fixture
+core
+core.*
+
+# Lyrics and reports generated in the launch directory stay local.
+/*.md
+!/README.md
+/LYRCENSOR diagnostics*.json
