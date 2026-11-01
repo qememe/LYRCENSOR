@@ -21,11 +21,14 @@ tests/test_http: tests/test_http.c tests/support.c tests/support.h $(CORE) $(wil
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -DLY_TEST_HTTP -Itests -o $@ tests/test_http.c tests/support.c $(CORE) $(LDLIBS)
 tests/test_diagnostics: tests/test_diagnostics.c $(CORE) $(wildcard src/*.h)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ tests/test_diagnostics.c $(CORE) $(LDLIBS) -lm
+tests/test_requests: tests/test_requests.c $(CORE) $(wildcard src/*.h)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ tests/test_requests.c $(CORE) $(LDLIBS)
 tests/test_terminal: tests/test_terminal.c tests/support.c tests/support.h lyrcensor tests/lyrcensor_fixture
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -Itests -o $@ tests/test_terminal.c tests/support.c -lutil -ljansson
-test: tests/test_core tests/test_diagnostics tests/test_http tests/test_terminal
+test: tests/test_core tests/test_diagnostics tests/test_requests tests/test_http tests/test_terminal
 	./tests/test_core
 	./tests/test_diagnostics
+	./tests/test_requests
 	./tests/test_http
 	./tests/test_terminal
 install: lyrcensor
@@ -33,4 +36,4 @@ install: lyrcensor
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/lyrcensor
 clean:
-	rm -f $(OBJ) lyrcensor tests/test_core tests/test_diagnostics tests/test_http tests/test_terminal tests/lyrcensor_fixture
+	rm -f $(OBJ) lyrcensor tests/test_core tests/test_diagnostics tests/test_requests tests/test_http tests/test_terminal tests/lyrcensor_fixture

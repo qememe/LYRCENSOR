@@ -1,5 +1,6 @@
 #include "diagnostics.h"
 #include "output.h"
+#include "classifier.h"
 #include <jansson.h>
 #include <math.h>
 #include <stdlib.h>
@@ -63,6 +64,7 @@ bool diagnostics_print(Diagnostics *d,FILE *f,char *error) {
     if (!d) { error_set(error,"No classification diagnostics yet; press F5 to process lyrics."); return false; }
     if (!diagnostics_snapshot(d,0,&records,&count,&complete)) goto fail;
     fprintf(f,"\n--- LYRCENSOR diagnostics (%s) ---\nModel: %s\nStage 1 threshold: %.17g | Stage 2 threshold: %.17g\nnoul = P(YES); decision uses probability >= threshold.\nLine numbers are 1-based; token IDs are 0-based within their line.\n",complete?"complete":"partial",d->config.model,d->config.line_threshold,d->config.token_threshold);
+    fprintf(f,"Classification policy: %s\n",classifier_policy_version);
     /* Print tokens first so a zero-redaction run immediately exposes its highest score. */
     for (unsigned pass=2;pass>0;pass--) {
         fprintf(f,"%s\n",pass==2?"TOKENS (descending probability):":"LINES (source order):");
@@ -89,6 +91,8 @@ bool diagnostics_save(Diagnostics *d,int dirfd,char **filename,char *error) {
         "noul_semantics","P(YES); select if noul >= threshold", "stage1_threshold",d->config.line_threshold,
         "stage2_threshold",d->config.token_threshold,"lines",lines,"tokens",tokens);
     if (!root) goto fail;
+    json_t *metadata=classifier_policy_metadata();
+    if (!metadata||json_object_set_new(root,"classification_policy",metadata)<0) { json_decref(root); goto fail; }
     for (size_t i=0;i<count;i++) {
         DiagnosticRecord r=records[i]; char id[80];
         if (r.stage==1) snprintf(id,sizeof(id),"line_%zu",r.line_id);

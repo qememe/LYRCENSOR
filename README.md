@@ -12,11 +12,15 @@ does not use Chat Completions, JSON text generation, JSON Schema response
 formats, or SSE. A model configured in Settings must support the Decisions API;
 there is no automatic switch to another model or endpoint.
 
-The policy prioritizes abusive racial/ethnic slurs, dehumanizing group insults,
-severe targeted abuse, explicit threats, and exceptionally graphic expressions.
+The policy prioritizes explicit racial/ethnic and sexual-orientation/gender-identity
+slurs, dehumanizing group insults, severe identity-based abuse, exceptionally severe
+personal threats, and extremely graphic abusive expressions.
 Ordinary profanity, including common Russian swear words, does not automatically
 qualify. Quotation, irony, satire, history, metaphor, and artistic context matter.
-Decisions are probabilistic and differ between models. Review results before use;
+The question concerns the target expression's linguistic use, not the author's
+beliefs or endorsement. Quotation and satire do not automatically excuse a slur
+or make a neutral word offensive. Decisions are probabilistic and differ between
+models. Review results before use;
 redaction does not guarantee acceptance by any other model or service.
 
 ## Build and installation
@@ -156,6 +160,14 @@ An interrupted bracketed paste is not committed to the editor.
    in every question batch. Select a token if
    `answers[line_ID_token_ID].noul >= token_threshold`.
 
+Stage 2 separates `state.context` (the current line, neighbors and complete
+ordered token list) from `state.target_tokens` (one exact target per question in
+the current batch). Each target is keyed by its question ID and contains
+`line_id`, `token_id`, and the original UTF-8 token. The task references that exact
+key, so repeated words are distinguished by ID rather than spelling. The whole
+song is not transmitted. Language-specific examples are instructions to Jev,
+not C keyword matching or automatic replacements.
+
 Questions use explicit policy/task instructions and true/false criteria. Lyrics
 are separate untrusted `state` data. Each returned answer must have exactly
 `{"type":"noul","noul":<finite number from 0 through 1>}`. Every submitted key
@@ -256,6 +268,13 @@ do not change the source or the saved censorship result. Diagnostic record stora
 and serialized reports each have a 16 MiB limit; recording failure stops processing
 explicitly rather than silently losing decisions.
 
+Reports also include `classification_policy` metadata once per report: the
+version (`token-usage-v2`), exact shared instructions, both question templates,
+their substitution parameters, and true/false criteria. The same C constants
+construct the API questions and this metadata. These fields do not alter the
+recorded model probabilities. F3's normal-terminal display identifies the policy
+version as well.
+
 ### Investigating zero redactions
 
 `noul` is **P(YES)**, as documented in the
@@ -264,9 +283,11 @@ The code uses that value directly, never `1 - noul`, and selects when
 `probability >= threshold`, including equality. Stage 1's true criterion asks
 whether a line *potentially* needs review. Stage 2's true criterion asks whether
 the identified token needs minimal redaction in context; false means preserve.
-The stage 2 task explicitly states YES=redact and NO=preserve. The existing policy
-and true/false criteria retain the distinction between severe abuse and ordinary
-profanity. No threshold is adjusted automatically.
+The stage 2 task explicitly states YES=mask and NO=preserve. Policy version
+`token-usage-v2` asks about the expression's function, independently of the
+author's intentions, and gives Russian usage examples to distinguish slurs from
+neutral identity terms, literal/metaphorical words and ordinary profanity. No
+threshold is adjusted automatically.
 
 For a run with many candidates but no redactions, press F3 and compare the first
 (highest-scoring) token with the recorded stage 2 threshold. If it is below the
@@ -328,6 +349,12 @@ It runs:
   settings, resize, rejected escape-sequence paste, missing credentials, API
   failure/cancel recovery, SIGTERM recovery, and the full two-stage
   classification/save/normal-screen output path.
+- Russian request-construction regressions check slurs, neutral identity terms,
+  literal/metaphorical uses, profanity, vulgar insults, quotation, satire,
+  non-graphic historical violence, religious criticism and neutral words in
+  hostile sentences. They verify exact targets, source spans, neighboring lines,
+  shared templates, and repeated-token IDs across request batches. Their fixed
+  mock probabilities deliberately do **not** model these examples' meanings.
 
 Only test executables built with `LY_TEST_HTTP` allow a loopback endpoint override;
 that code and environment-variable override do not exist in the production
@@ -342,6 +369,11 @@ and at the final prompt, report export, and preservation of the saved lyrics.
 Authenticated provider/model behavior requires a separate live check with your
 own OpenRouter account. Offline tests validate the documented protocol and local
 invariants, not a model's semantic accuracy.
+
+For an optional manual comparison using human-reference labels and separate
+false-positive/false-negative measurements, see
+[the policy evaluation workflow](docs/policy-evaluation.md). It requires new
+live Jev decisions to assess quality; `make test` never makes paid API calls.
 
 ## Troubleshooting and limitations
 

@@ -24,16 +24,19 @@ static bool decide(void *ctx,const json_t *request,double *p,char *error) {
         double probability=line_prob[line];
         if (parsed==2) {
             CHECK(line>0&&token<5); probability=word_prob[line][token];
-            CHECK(!json_object_get(state,"original_lyrics")); CHECK(json_object_size(state)==5);
-            CHECK(json_is_string(json_object_get(state,"original_line")));
-            CHECK(strstr(json_string_value(json_object_get(json_object_get(q,"instructions"),"task")),"YES means redact"));
-            CHECK(strstr(json_string_value(json_object_get(criteria,"true")),"requiring minimal redaction"));
-            CHECK(strstr(json_string_value(json_object_get(criteria,"false")),"preserved"));
-            json_t *tokens=json_object_get(state,"ordered_word_tokens");
+            CHECK(!json_object_get(state,"original_lyrics")); CHECK(json_object_size(state)==2);
+            json_t *context=json_object_get(state,"context");
+            CHECK(json_is_string(json_object_get(context,"original_line")));
+            CHECK(strstr(json_string_value(json_object_get(json_object_get(q,"instructions"),"task")),"YES=mask; NO=preserve"));
+            CHECK(!strcmp(json_string_value(json_object_get(criteria,"true")),classifier_stage2_yes));
+            CHECK(!strcmp(json_string_value(json_object_get(criteria,"false")),classifier_stage2_no));
+            json_t *target=json_object_get(json_object_get(state,"target_tokens"),key);
+            CHECK((size_t)json_integer_value(json_object_get(target,"token_id"))==token);
+            json_t *tokens=json_object_get(context,"ordered_word_tokens");
             CHECK((size_t)json_integer_value(json_object_get(json_array_get(tokens,token),"token_id"))==token);
             if (line==1) {
-                CHECK(!strcmp(json_string_value(json_object_get(state,"previous_line")),"skip abc"));
-                CHECK(!strcmp(json_string_value(json_object_get(state,"next_line")),"same same same"));
+                CHECK(!strcmp(json_string_value(json_object_get(context,"previous_line")),"skip abc"));
+                CHECK(!strcmp(json_string_value(json_object_get(context,"next_line")),"same same same"));
                 CHECK(json_array_size(tokens)==5);
             }
         }
@@ -83,6 +86,9 @@ int main(void) {
     setenv("OPENROUTER_API_KEY","diagnostic-test-secret-never-copy",1);
     CHECK(diagnostics_save(d,fd,&name,error)); CHECK(!strcmp(name,"LYRCENSOR diagnostics.json")); json_t *report=load_report(fd,name); free(name);
     CHECK(json_is_true(json_object_get(report,"classification_complete")));
+    json_t *policy=json_object_get(report,"classification_policy"),*expected_policy=classifier_policy_metadata(); CHECK(expected_policy);
+    CHECK(json_equal(policy,expected_policy)); json_decref(expected_policy);
+    CHECK(!strcmp(json_string_value(json_object_get(policy,"version")),classifier_policy_version));
     CHECK(json_number_value(json_object_get(report,"stage1_threshold"))==cfg.line_threshold);
     CHECK(json_number_value(json_object_get(report,"stage2_threshold"))==cfg.token_threshold);
     CHECK(json_array_size(json_object_get(report,"lines"))==3);

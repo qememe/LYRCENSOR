@@ -2,6 +2,7 @@ lyrcensor
 src/*.o
 tests/test_core
 tests/test_diagnostics
+tests/test_requests
 tests/test_http
 tests/test_terminal
 tests/lyrcensor_fixture

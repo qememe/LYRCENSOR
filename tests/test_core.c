@@ -120,7 +120,12 @@ static bool mock_decide(void *ctx,const json_t *req,double *probs,char *error) {
         CHECK(!strcmp(json_string_value(json_object_get(v,"type")),"noul"));
         CHECK(json_object_get(json_object_get(v,"instructions"),"policy"));
         bool word=strstr(key,"_token_")!=NULL;
-        if (word) { m->word_questions++; CHECK(json_is_array(json_object_get(state,"ordered_word_tokens"))); CHECK(!json_object_get(state,"original_lyrics")); CHECK(json_object_get(state,"previous_line")); CHECK(json_object_get(state,"next_line")); }
+        if (word) {
+            m->word_questions++; json_t *context=json_object_get(state,"context");
+            CHECK(json_is_array(json_object_get(context,"ordered_word_tokens")));
+            CHECK(!json_object_get(state,"original_lyrics")); CHECK(json_object_get(context,"previous_line")); CHECK(json_object_get(context,"next_line"));
+            CHECK(json_is_object(json_object_get(json_object_get(state,"target_tokens"),key)));
+        }
         else { m->line_questions++; CHECK(json_is_array(json_object_get(state,"lyric_lines"))); }
         double value=m->mode==0?0:m->mode==1?1:(word?0.75:0.20);
         json_t *a=json_pack("{s:s,s:f}","type","noul","noul",value); CHECK(a); CHECK(json_object_set_new(answers,key,a)==0);
